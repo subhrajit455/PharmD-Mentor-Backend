@@ -49,6 +49,7 @@ app.use('/api/questions', require('./routes/question.routes'));
 app.use('/api/cases', require('./routes/case.routes'));
 app.use('/api/audit-logs', require('./routes/audit.routes'));
 app.use('/api/dashboard', require('./routes/dashboard.routes'));
+app.use('/api/chat', require('./routes/chat.routes'));
 
 // 404 Handler
 app.use((req, res) => {
