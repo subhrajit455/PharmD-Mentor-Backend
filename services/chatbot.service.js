@@ -287,6 +287,7 @@ function generateSoapTemplate(condition = 'Acute Decompensated Heart Failure') {
 async function processChatMessage({ message, conversationId, category = 'general', language = 'en', history = [] }) {
   const query = (message || '').trim();
   const lowerQuery = query.toLowerCase();
+  const normalizedLang = (language || 'en').toLowerCase();
 
   // Check if Gemini API is available
   const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
@@ -296,9 +297,9 @@ async function processChatMessage({ message, conversationId, category = 'general
       const geminiResponse = await callGeminiApi(query, history, apiKey);
       if (geminiResponse) {
         let finalResponse = geminiResponse;
-        if (language && language !== 'en') {
+        if (normalizedLang && normalizedLang !== 'en') {
           try {
-            finalResponse = await translateText(geminiResponse, language);
+            finalResponse = await translateText(geminiResponse, normalizedLang);
           } catch (tErr) {
             console.warn('Translation warning for Gemini response:', tErr.message);
           }
@@ -502,9 +503,9 @@ In clinical pharmacy practice, evidence-based medication therapy management requ
   }
 
   // Handle translation if target language is not English
-  if (language && language !== 'en') {
+  if (normalizedLang && normalizedLang !== 'en') {
     try {
-      responseText = await translateText(responseText, language);
+      responseText = await translateText(responseText, normalizedLang);
     } catch (err) {
       console.warn('Failed to translate response, returning English:', err.message);
     }

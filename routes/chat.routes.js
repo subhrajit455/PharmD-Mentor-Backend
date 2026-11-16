@@ -134,7 +134,12 @@ router.post('/message', resolveUserOptional, async (req, res) => {
 router.get('/history/:conversationId', async (req, res) => {
   try {
     const { conversationId } = req.params;
-    const messages = await ChatMessage.find({ conversationId })
+    const { language } = req.query;
+    const query = { conversationId };
+    if (language) {
+      query.language = (language || 'en').toLowerCase();
+    }
+    const messages = await ChatMessage.find(query)
       .sort({ createdAt: 1 })
       .limit(100);
 
@@ -200,6 +205,32 @@ router.post('/tool/:toolName', async (req, res) => {
     }
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * @route   POST /api/chat/translate
+ * @desc    Translate a clinical message or text into target Indian language
+ * @access  Public
+ */
+router.post('/translate', async (req, res) => {
+  try {
+    const { text, language = 'en' } = req.body;
+    if (!text || typeof text !== 'string') {
+      return res.status(400).json({ success: false, message: 'Text to translate is required' });
+    }
+
+    const targetLang = (language || 'en').toLowerCase();
+    if (targetLang === 'en') {
+      return res.json({ success: true, translatedText: text, language: 'en' });
+    }
+
+    const { translateText } = require('../services/translator.service');
+    const translated = await translateText(text, targetLang);
+    res.json({ success: true, translatedText: translated, language: targetLang });
+  } catch (error) {
+    console.error('Chat translation error:', error);
+    res.status(500).json({ success: false, message: error.message || 'Translation failed' });
   }
 });
 
