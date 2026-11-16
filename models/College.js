@@ -25,6 +25,14 @@ const collegeSchema = new mongoose.Schema(
       lowercase: true,
       trim: true
     },
+    region: {
+      type: String,
+      trim: true
+    },
+    state: {
+      type: String,
+      trim: true
+    },
     status: {
       type: String,
       enum: ['ACTIVE', 'SUSPENDED'],

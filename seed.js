@@ -8,6 +8,7 @@ try {
 
 const User = require('./models/User');
 const College = require('./models/College');
+const colleges = require('./data/colleges');
 const Subject = require('./models/Subject');
 const Reaction = require('./models/Reaction');
 const Question = require('./models/Question');
@@ -18,7 +19,10 @@ const translatorService = require('./services/translator.service');
 const seedDatabase = async () => {
   try {
     console.log('[Seed]: Connecting to MongoDB Atlas...');
-    await mongoose.connect(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 15000 });
+    await mongoose.connect(process.env.MONGODB_URI, {
+      dbName: process.env.DB_NAME || 'pharmd_mentor',
+      serverSelectionTimeoutMS: 15000
+    });
     console.log('[Seed]: Successfully connected to database:', mongoose.connection.name);
 
     // 1. Clear previous collections
@@ -35,42 +39,11 @@ const seedDatabase = async () => {
 
     // 2. Seed Real Pharm.D Colleges
     console.log('[Seed]: Seeding Pharm.D Colleges...');
-    await College.insertMany([
-      {
-        collegeId: 'col-manipal',
-        name: 'Manipal College of Pharmaceutical Sciences (MCOPS)',
-        code: 'MCOPS-01',
-        slug: 'mcops',
-        status: 'ACTIVE',
-        programs: ['PHARM_D', 'PHARM_D_PB'],
-        seatQuota: { maxTeachers: 60, maxStudents: 850, usedTeachers: 42, usedStudents: 640 },
-        validUntil: '2028-12-31'
-      },
-      {
-        collegeId: 'col-jss',
-        name: 'JSS College of Pharmacy & Hospital, Mysuru',
-        code: 'JSS-02',
-        slug: 'jss',
-        status: 'ACTIVE',
-        programs: ['PHARM_D', 'PHARM_D_PB'],
-        seatQuota: { maxTeachers: 65, maxStudents: 920, usedTeachers: 48, usedStudents: 720 },
-        validUntil: '2028-12-31'
-      },
-      {
-        collegeId: 'col-niper',
-        name: 'National Institute of Pharmaceutical Education and Research (NIPER)',
-        code: 'NIPER-03',
-        slug: 'niper',
-        status: 'ACTIVE',
-        programs: ['PHARM_D'],
-        seatQuota: { maxTeachers: 45, maxStudents: 500, usedTeachers: 30, usedStudents: 390 },
-        validUntil: '2028-12-31'
-      }
-    ]);
+    await College.insertMany(colleges);
 
-    // 3. Seed Real Pharm.D Users
-    console.log('[Seed]: Seeding Pharm.D Users...');
-    await User.create([
+    // 3. Seed Real Pharm.D Users (Super Admin, Primary Demo Accounts, and Institutional Cadres)
+    console.log('[Seed]: Seeding Pharm.D Users for Colleges...');
+    const institutionalUsers = [
       {
         name: 'Dr. Rajeshwar Sen, Pharm.D, Ph.D',
         email: 'director@pharmdmentor.edu',
@@ -116,7 +89,45 @@ const seedDatabase = async () => {
         xpPoints: 3420,
         avatarUrl: ''
       }
-    ]);
+    ];
+
+    // Seed Faculty & Student accounts for all 27 PCI-approved institutions
+    colleges.forEach((c) => {
+      const codeKey = c.code.toLowerCase().replace(/[^a-z0-9]/g, '');
+      institutionalUsers.push({
+        name: `Faculty Preceptor (${c.code})`,
+        email: `faculty.${codeKey}@pharmdmentor.edu`,
+        password: 'Faculty@PharmD2026',
+        role: 'TEACHER',
+        collegeId: c.collegeId,
+        collegeName: c.name,
+        department: 'Department of Pharmacy Practice & Clinical Pharmacy',
+        degreeProgram: 'Pharm.D (Doctor of Pharmacy)',
+        academicYear: 'Clinical Faculty',
+        batchName: `${c.code} Faculty Cadre`,
+        streakDays: 25,
+        xpPoints: 5400,
+        avatarUrl: ''
+      });
+
+      institutionalUsers.push({
+        name: `Pharm.D Candidate (${c.code})`,
+        email: `student.${codeKey}@student.pharmd.edu`,
+        password: 'Student@PharmD2026',
+        role: 'STUDENT',
+        collegeId: c.collegeId,
+        collegeName: c.name,
+        department: 'Department of Pharmacy Practice',
+        degreeProgram: 'Pharm.D (Doctor of Pharmacy)',
+        academicYear: '4th Year (Clinical Clerkship)',
+        batchName: `${c.code} Cohort 2022-28`,
+        streakDays: 12,
+        xpPoints: 2800,
+        avatarUrl: ''
+      });
+    });
+
+    await User.create(institutionalUsers);
 
     // 4. Seed Real PCI Pharm.D Curriculum with 9 Indian Language Translations
     console.log('[Seed]: Generating Auto-Translations for India\'s 9 Primary Languages...');

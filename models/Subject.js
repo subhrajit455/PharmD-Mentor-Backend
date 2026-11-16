@@ -1,5 +1,41 @@
 const mongoose = require('mongoose');
 
+const documentSchema = new mongoose.Schema({
+  id: {
+    type: String,
+    required: true,
+    default: () => `doc-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`
+  },
+  name: {
+    type: String,
+    required: true
+  },
+  fileUrl: {
+    type: String,
+    required: true
+  },
+  fileType: {
+    type: String,
+    default: 'application/pdf'
+  },
+  fileSize: {
+    type: Number,
+    default: 0
+  },
+  extractedText: {
+    type: String,
+    default: ''
+  },
+  uploadedAt: {
+    type: Date,
+    default: Date.now
+  },
+  uploadedBy: {
+    type: String,
+    default: 'Faculty Preceptor'
+  }
+});
+
 const topicSchema = new mongoose.Schema({
   id: {
     type: String,
@@ -30,6 +66,10 @@ const topicSchema = new mongoose.Schema({
   contentMarkdown: {
     type: String,
     default: ''
+  },
+  documents: {
+    type: [documentSchema],
+    default: []
   },
   // Auto-translated fields for India's 9 primary languages (en, hi, bn, te, ta, mr, gu, kn, ml)
   translations: {

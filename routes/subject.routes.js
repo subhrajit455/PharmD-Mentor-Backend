@@ -165,7 +165,7 @@ router.post('/:id/units', async (req, res) => {
 // Workflow step: Topics(add+ options for teachers and admin) ----> auto translator ----> Database
 router.post('/:id/units/:unitId/topics', async (req, res) => {
   try {
-    const { title, estimatedReadMinutes, mcqCount, hasReactions, clinicalPearls, keyTakeaways, contentMarkdown } = req.body;
+    const { title, estimatedReadMinutes, mcqCount, hasReactions, clinicalPearls, keyTakeaways, contentMarkdown, documents } = req.body;
     if (!title) {
       return res.status(400).json({ success: false, message: 'Topic title is required' });
     }
@@ -201,6 +201,7 @@ router.post('/:id/units/:unitId/topics', async (req, res) => {
       clinicalPearls: clinicalPearls || [],
       keyTakeaways: keyTakeaways || [],
       contentMarkdown: contentMarkdown || '',
+      documents: documents || [],
       translations
     };
 
@@ -258,6 +259,85 @@ router.put('/topics/:topicId', async (req, res) => {
 
     await subject.save();
     res.json({ success: true, topic: foundTopic, subject });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// @route   POST /api/subjects/topics/:topicId/documents
+// @desc    Upload or attach a study document to a topic
+router.post('/topics/:topicId/documents', async (req, res) => {
+  try {
+    const { topicId } = req.params;
+    const { name, fileUrl, fileType, fileSize, extractedText, uploadedBy } = req.body;
+
+    if (!name || !fileUrl) {
+      return res.status(400).json({ success: false, message: 'Document name and file content are required' });
+    }
+
+    const subject = await Subject.findOne({ 'units.topics.id': topicId });
+    if (!subject) {
+      return res.status(404).json({ success: false, message: 'Topic not found in any subject' });
+    }
+
+    let foundTopic = null;
+    let newDocument = null;
+
+    for (const u of subject.units) {
+      for (const t of u.topics) {
+        if (t.id === topicId) {
+          if (!t.documents) t.documents = [];
+          newDocument = {
+            id: `doc-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+            name,
+            fileUrl,
+            fileType: fileType || 'application/pdf',
+            fileSize: fileSize || 0,
+            extractedText: extractedText || '',
+            uploadedAt: new Date(),
+            uploadedBy: uploadedBy || 'Faculty Preceptor'
+          };
+          t.documents.push(newDocument);
+          foundTopic = t;
+          break;
+        }
+      }
+      if (foundTopic) break;
+    }
+
+    await subject.save();
+    res.status(201).json({ success: true, document: newDocument, topic: foundTopic, subject });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// @route   DELETE /api/subjects/topics/:topicId/documents/:docId
+// @desc    Delete an attached document from a topic
+router.delete('/topics/:topicId/documents/:docId', async (req, res) => {
+  try {
+    const { topicId, docId } = req.params;
+    const subject = await Subject.findOne({ 'units.topics.id': topicId });
+    if (!subject) {
+      return res.status(404).json({ success: false, message: 'Topic not found' });
+    }
+
+    let foundTopic = null;
+    for (const u of subject.units) {
+      for (const t of u.topics) {
+        if (t.id === topicId) {
+          if (t.documents) {
+            t.documents = t.documents.filter((d) => d.id !== docId && d._id?.toString() !== docId);
+          }
+          foundTopic = t;
+          break;
+        }
+      }
+      if (foundTopic) break;
+    }
+
+    await subject.save();
+    res.json({ success: true, message: 'Document removed from topic', topic: foundTopic, subject });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

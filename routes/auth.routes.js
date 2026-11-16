@@ -64,16 +64,21 @@ router.post('/register', async (req, res) => {
 // @desc    Authenticate user & get token
 router.post('/login', async (req, res) => {
   try {
-    const { email, password, role } = req.body;
+    const { email, password, role, collegeId } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ success: false, message: 'Please provide email and password' });
     }
 
-    // Find by email or fallback to role if provided
+    // 1. Find by exact email
     let user = await User.findOne({ email: email.toLowerCase() });
-    
-    // If not found by email, check if role matched a standard seed user
+
+    // 2. If not found by email and collegeId is provided, look for a user in this college with this role
+    if (!user && collegeId && role) {
+      user = await User.findOne({ collegeId, role });
+    }
+
+    // 3. Fallback to role if provided
     if (!user && role) {
       user = await User.findOne({ role });
     }
@@ -87,6 +92,20 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ success: false, message: 'Invalid credentials. Password incorrect.' });
     }
 
+    let userCollegeId = user.collegeId;
+    let userCollegeName = user.collegeName;
+
+    if (collegeId && role !== 'SUPER_ADMIN') {
+      const College = require('../models/College');
+      const targetCollege = await College.findOne({
+        $or: [{ collegeId }, { slug: collegeId }]
+      });
+      if (targetCollege) {
+        userCollegeId = targetCollege.collegeId;
+        userCollegeName = targetCollege.name;
+      }
+    }
+
     const token = generateToken(user._id);
 
     res.json({
@@ -97,8 +116,8 @@ router.post('/login', async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
-        collegeId: user.collegeId,
-        collegeName: user.collegeName,
+        collegeId: userCollegeId,
+        collegeName: userCollegeName,
         department: user.department,
         degreeProgram: user.degreeProgram,
         academicYear: user.academicYear,

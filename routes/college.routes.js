@@ -6,13 +6,16 @@ const College = require('../models/College');
 // @desc    Get all registered Pharm.D colleges
 router.get('/', async (req, res) => {
   try {
-    const colleges = await College.find().sort({ createdAt: -1 });
+    const colleges = await College.find().sort({ name: 1 });
     // Transform to match frontend schema
     const formatted = colleges.map((c) => ({
       id: c.collegeId || c._id,
+      collegeId: c.collegeId || c._id,
       name: c.name,
       code: c.code,
       slug: c.slug,
+      region: c.region || '',
+      state: c.state || '',
       status: c.status,
       programs: c.programs,
       seatQuota: c.seatQuota,
@@ -86,4 +89,3 @@ router.patch('/:id/status', async (req, res) => {
 });
 
 module.exports = router;
-
